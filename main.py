@@ -4,6 +4,8 @@ import googlemaps
 from googlemaps.exceptions import ApiError
 import os
 from dotenv import load_dotenv
+import tkinter as tk
+from tkinter import messagebox
 
 # Load environment variables from keys.env
 load_dotenv('keys.env')
@@ -46,10 +48,14 @@ def get_restaurants_nearby(location, radius):
     return restaurants
 
 
-def recommend_restaurants_along_route(origin, destination, radius):
+def recommend_restaurants_along_route():
     """
     Recommend restaurants along the route from origin to destination.
     """
+    origin = entry_origin.get()
+    destination = entry_destination.get()
+    radius = radius_slider.get()
+
     directions = get_directions(origin, destination)
     route = []
     for step in directions:
@@ -64,12 +70,10 @@ def recommend_restaurants_along_route(origin, destination, radius):
         while True:
             try:
                 if float(radius) < 0:
-                    print("Invalid radius")
-                    radius = input("Enter radius in meters: ")
-                    continue
-                
-                restaurants = get_restaurants_nearby(
-                    start_location, radius)
+                    messagebox.showerror("Error", "Invalid radius")
+                    return
+
+                restaurants = get_restaurants_nearby(start_location, radius)
                 for restaurant in restaurants:
                     restaurant_id = restaurant['id']
                     if restaurant_id not in recommended_restaurants:
@@ -82,32 +86,50 @@ def recommend_restaurants_along_route(origin, destination, radius):
                             recommended_restaurants[restaurant_id] = restaurant
                 break
             except ApiError:
-                print("Error while fetching api from Yelp")
-                radius = input("Enter desired radius in meters")
-    return recommended_restaurants
+                messagebox.showerror("Error", "Error while fetching API from Yelp")
+                return
+
+    # Display recommended restaurants
+    result_text.delete('1.0', tk.END)
+    result_text.insert(tk.END, "Recommended Restaurants:\n\n")
+    for restaurant_id, restaurant in recommended_restaurants.items():
+        name = restaurant['name']
+        address = restaurant['location']['address1']
+        rating = restaurant['rating']
+        result_text.insert(tk.END, "Restaurant: {}\n".format(name))
+        result_text.insert(tk.END, "Address: {}\n".format(address))
+        result_text.insert(tk.END, "Rating: {}\n".format(rating))
+        result_text.insert(tk.END, "\n")
+
+# Create the main application window
+window = tk.Tk()
+window.title("Restaurant Recommender")
+
+# Create labels and entry fields for origin, destination, and radius
+label_origin = tk.Label(window, text="Origin:")
+label_origin.pack()
+entry_origin = tk.Entry(window)
+entry_origin.pack()
+
+label_destination = tk.Label(window, text="Destination:")
+label_destination.pack()
+entry_destination = tk.Entry(window)
+entry_destination.pack()
+
+label_radius = tk.Label(window, text="Radius (in meters):")
+label_radius.pack()
+# Slider for radius
+radius_slider = tk.Scale(window, from_=0, to=5000, orient=tk.HORIZONTAL, resolution=100)
+radius_slider.pack()
 
 
-# Usage example
-while (True):
+# Create a button to trigger the recommendation process
+button_recommend = tk.Button(window, text="Recommend Restaurants", command=recommend_restaurants_along_route)
+button_recommend.pack()
 
-    var_origin = input("Enter start location: ")
-    var_destination = input("Enter destination location: ")
-    var_radius = input("Enter desired radius in meters: ")
-    origin = var_origin
-    destination = var_destination
-    radius = var_radius  # Radius in meters
+# Create a text widget to display the recommended restaurants
+result_text = tk.Text(window, height=10, width=50)
+result_text.pack()
 
-    recommended_restaurants = recommend_restaurants_along_route(
-        origin, destination, radius)
-
-    if recommended_restaurants:
-        break
-print("\n Recommended Restaurants: \n")
-for restaurant_id, restaurant in recommended_restaurants.items():
-    name = restaurant['name']
-    address = restaurant['location']['address1']
-    rating = restaurant['rating']
-    print("Restaurant:", name)
-    print("Address:", address)
-    print("Rating:", rating)
-    print()
+# Run the main event loop
+window.mainloop()
